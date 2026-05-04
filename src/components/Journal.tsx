@@ -73,6 +73,7 @@ export const Journal: React.FC = () => {
       };
 
       await firebaseService.saveJournalEntry(entry, validTransactions);
+      firebaseService.logActivity("JOURNAL_SAVE", `Simpan jurnal: ${reference} - ${description}`);
       setShowForm(false);
       // Reset form
       setDescription("");

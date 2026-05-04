@@ -29,6 +29,7 @@ const navItems = [
   { id: "journal", label: "Jurnal Umum", icon: BookOpen },
   { id: "ledger", label: "Buku Besar", icon: Receipt },
   { id: "reports", label: "Laporan", icon: TrendingUp },
+  { id: "inventory", label: "Inventaris", icon: Package },
   { id: "arap", label: "Hutang & Piutang", icon: CreditCard },
   { id: "contacts", label: "Pelanggan & Pemasok", icon: Users },
   { id: "settings", label: "Pengaturan", icon: ArrowLeftRight },

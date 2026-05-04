@@ -196,5 +196,78 @@ export const firebaseService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, type);
     }
+  },
+
+  // INVENTORY
+  async getInventory(): Promise<InventoryItem[]> {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return [];
+
+    try {
+      const q = query(collection(db, 'inventory'), where('userId', '==', userId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, 'inventory');
+      return [];
+    }
+  },
+
+  async addInventoryItem(item: Omit<InventoryItem, 'id'>) {
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("User must be logged in");
+
+    try {
+      await addDoc(collection(db, 'inventory'), { ...item, userId });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'inventory');
+    }
+  },
+
+  async updateInventoryQuantity(itemId: string, newQuantity: number) {
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("User must be logged in");
+
+    try {
+      const itemRef = doc(db, 'inventory', itemId);
+      await updateDoc(itemRef, { quantity: newQuantity });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'inventory');
+    }
+  },
+
+  // ACTIVITY LOG
+  async logActivity(action: string, detail: string) {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return;
+
+    try {
+      await addDoc(collection(db, 'activity_logs'), {
+        userId,
+        action,
+        detail,
+        timestamp: Timestamp.now()
+      });
+    } catch (error) {
+      console.error("Failed to log activity:", error);
+    }
+  },
+
+  async getActivityLogs(): Promise<any[]> {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return [];
+
+    try {
+      const q = query(
+        collection(db, 'activity_logs'), 
+        where('userId', '==', userId),
+        orderBy('timestamp', 'desc'),
+        limit(10)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      return [];
+    }
   }
 };

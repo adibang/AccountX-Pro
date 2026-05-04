@@ -26,17 +26,20 @@ import { cn } from "../lib/utils";
 export const Dashboard: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [recentEntries, setRecentEntries] = useState<JournalEntry[]>([]);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const [accs, entries] = await Promise.all([
+      const [accs, entries, logs] = await Promise.all([
         firebaseService.getAccounts(),
-        firebaseService.getJournalEntries()
+        firebaseService.getJournalEntries(),
+        firebaseService.getActivityLogs()
       ]);
       setAccounts(accs);
       setRecentEntries(entries.slice(0, 5));
+      setActivityLogs(logs);
       setLoading(false);
     };
     fetchData();
@@ -155,32 +158,61 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="card p-6">
-        <h3 className="text-lg font-semibold mb-6">Aktivitas Terakhir</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {recentEntries.length === 0 ? (
-            <p className="col-span-full text-sm text-slate-400 italic py-10 text-center">Belum ada transaksi.</p>
-          ) : (
-            recentEntries.map(entry => (
-              <div key={entry.id} className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors border border-transparent hover:border-slate-200">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-slate-400 border border-slate-200 shadow-sm">
-                    <Calendar className="w-5 h-5" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold mb-6">Aktivitas Terakhir</h3>
+          <div className="space-y-4">
+            {recentEntries.length === 0 ? (
+              <p className="text-sm text-slate-400 italic py-10 text-center">Belum ada transaksi.</p>
+            ) : (
+              recentEntries.map(entry => (
+                <div key={entry.id} className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors border border-transparent hover:border-slate-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-slate-400 border border-slate-200 shadow-sm">
+                      <Calendar className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 line-clamp-1">{entry.referenceCode}</h4>
+                      <p className="text-[10px] text-slate-500 line-clamp-1">{entry.description}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-bold text-slate-900">
+                      Rp {entry.transactions.reduce((sum, t) => sum + t.debit, 0).toLocaleString()}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{entry.date}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold mb-6">Jejak Audit (Riwayat Sistem)</h3>
+          <div className="space-y-4">
+            {activityLogs.length === 0 ? (
+              <p className="text-sm text-slate-400 italic py-10 text-center">Belum ada riwayat aktivitas.</p>
+            ) : (
+              activityLogs.map(log => (
+                <div key={log.id} className="flex items-start gap-4 p-3 rounded-lg border border-slate-50 bg-slate-50/50">
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 mt-1",
+                    log.action === "LOGIN" ? "bg-indigo-100 text-indigo-600" : "bg-emerald-100 text-emerald-600"
+                  )}>
+                    {log.action[0]}
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900 line-clamp-1">{entry.referenceCode}</h4>
-                    <p className="text-[10px] text-slate-500 line-clamp-1">{entry.description}</p>
+                    <div className="text-sm font-bold text-slate-800">{log.action}</div>
+                    <p className="text-xs text-slate-500 mb-1">{log.detail}</p>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      {log.timestamp?.toDate().toLocaleString() || "Menghitung..."}
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold text-slate-900">
-                    Rp {entry.transactions.reduce((sum, t) => sum + t.debit, 0).toLocaleString()}
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">{entry.date}</div>
-                </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

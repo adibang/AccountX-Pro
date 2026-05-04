@@ -7,6 +7,7 @@ import { MasterData } from "./components/MasterData";
 import { Ledger } from "./components/Ledger";
 import { Contacts } from "./components/Contacts";
 import { Arap } from "./components/Arap";
+import { Inventory } from "./components/Inventory";
 import { Settings } from "./components/Settings";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -80,6 +81,7 @@ export default function App() {
       setLoading(false);
       
       if (user) {
+        firebaseService.logActivity("LOGIN", `User ${user.email} masuk ke sistem.`);
         // Ensure user profile exists
         try {
           const userDoc = await firebaseService.getUserProfile(user.uid);
@@ -253,6 +255,7 @@ export default function App() {
               {activeTab === "journal" && <Journal />}
               {activeTab === "ledger" && <Ledger />}
               {activeTab === "reports" && <Reports />}
+              {activeTab === "inventory" && <Inventory />}
               {activeTab === "arap" && <Arap />}
               {activeTab === "contacts" && <Contacts />}
               {activeTab === "settings" && <Settings />}

@@ -115,6 +115,32 @@ const ProfitLossReport: React.FC<{ accounts: Account[] }> = ({ accounts }) => {
   const totalExpense = expenses.reduce((sum, a) => sum + a.currentBalance, 0);
   const netProfit = totalRevenue - totalExpense;
 
+  const handleExport = () => {
+    const rows = [
+      ["Kategori", "Akun", "Saldo"],
+      ["PENDAPATAN", "", ""],
+      ...revenues.map(a => ["", a.name, a.currentBalance]),
+      ["Total Pendapatan", "", totalRevenue],
+      ["", "", ""],
+      ["BEBAN", "", ""],
+      ...expenses.map(a => ["", a.name, a.currentBalance]),
+      ["Total Beban", "", totalExpense],
+      ["", "", ""],
+      ["LABA BERSIH", "", netProfit]
+    ];
+    
+    const csvContent = rows.map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Laba_Rugi_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-end">
@@ -123,8 +149,11 @@ const ProfitLossReport: React.FC<{ accounts: Account[] }> = ({ accounts }) => {
           <p className="text-slate-500">Periode: Berjalan</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn-secondary py-2 px-3 flex items-center gap-2 text-sm">
-            <Download className="w-4 h-4" /> Export PDF
+          <button 
+            onClick={handleExport}
+            className="btn-secondary py-2 px-3 flex items-center gap-2 text-sm"
+          >
+            <Download className="w-4 h-4" /> Export CSV
           </button>
         </div>
       </div>
