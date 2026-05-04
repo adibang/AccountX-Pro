@@ -25,6 +25,53 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+
+  const [isPWA, setIsPWA] = useState(false);
+
+  useEffect(() => {
+    // Check if already in standalone mode
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+      setIsPWA(true);
+    }
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      console.log('PWA: beforeinstallprompt event fired');
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+
+    const handleAppInstalled = () => {
+      console.log('PWA: installed successfully');
+      setShowInstallBtn(false);
+      setIsPWA(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    
+    // Show the install prompt
+    deferredPrompt.prompt();
+    
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    
+    // We've used the prompt, and can't use it again, throw it away
+    setDeferredPrompt(null);
+    setShowInstallBtn(false);
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -138,9 +185,10 @@ export default function App() {
             <span className="font-bold tracking-tight text-xl hidden sm:inline">AccounX Pro</span>
           </div>
         </div>
-        
-        {user && (
-          <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-4">
+          {user && (
+            <div className="flex items-center gap-3">
             <div className="hidden sm:block text-right">
               <div className="text-xs font-bold text-slate-400 uppercase">User</div>
               <div className="text-sm font-medium">{user.email}</div>
@@ -150,6 +198,7 @@ export default function App() {
             </div>
           </div>
         )}
+        </div>
       </header>
 
       <div className="flex flex-1 relative overflow-hidden">
@@ -182,7 +231,9 @@ export default function App() {
                   setIsSidebarOpen(false);
                 }
               }} 
-              onLogout={handleLogout} 
+              onLogout={handleLogout}
+              showInstallBtn={showInstallBtn && !isPWA}
+              onInstall={handleInstallClick}
             />
           </div>
         </div>

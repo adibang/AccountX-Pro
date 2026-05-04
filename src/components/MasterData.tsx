@@ -30,7 +30,7 @@ export const MasterData: React.FC = () => {
     e.preventDefault();
     if (!code || !name) return;
 
-    const newAccount: Account = {
+    const newAccount: any = {
       id: `acc-${code}`,
       code,
       name,

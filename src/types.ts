@@ -17,6 +17,7 @@ export enum AccountType {
 
 export interface Account {
   id: string;
+  userId: string;
   code: string;
   name: string;
   type: AccountType;
@@ -43,6 +44,7 @@ export interface Transaction {
 
 export interface Customer {
   id: string;
+  userId: string;
   name: string;
   email?: string;
   phone?: string;
@@ -51,6 +53,7 @@ export interface Customer {
 
 export interface Supplier {
   id: string;
+  userId: string;
   name: string;
   email?: string;
   phone?: string;

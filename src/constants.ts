@@ -1,6 +1,6 @@
 import { Account, AccountType } from "./types";
 
-export const INITIAL_COA: Account[] = [
+export const INITIAL_COA: any[] = [
   // ASSETS (1000)
   { id: "1101", code: "1101", name: "Kas Utama", type: AccountType.ASSET, initialBalance: 0, currentBalance: 0 },
   { id: "1102", code: "1102", name: "Bank BCA", type: AccountType.ASSET, initialBalance: 0, currentBalance: 0 },

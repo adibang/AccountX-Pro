@@ -12,42 +12,46 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        injectRegister: 'inline',
+        devOptions: {
+          enabled: true,
+          type: 'module'
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          navigateFallback: '/index.html',
+          cleanupOutdatedCaches: true
+        },
+        includeAssets: ['logo.svg'],
         manifest: {
-          name: 'AccounX Pro - Sistem Akuntansi',
+          id: '/',
+          name: 'AccounX Pro - Financial System',
           short_name: 'AccounX',
           description: 'Sistem akuntansi profesional berbasis cloud',
           theme_color: '#4f46e5',
           background_color: '#ffffff',
           display: 'standalone',
+          orientation: 'portrait',
+          start_url: '.',
+          scope: '/',
           icons: [
             {
-              src: 'pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
+              src: 'logo.svg',
+              sizes: '192x192 512x512',
+              type: 'image/svg+xml',
               purpose: 'any'
             },
             {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
+              src: 'logo.svg',
+              sizes: '192x192 512x512',
+              type: 'image/svg+xml',
               purpose: 'maskable'
             }
           ]
         }
       })
     ],
-    base: './',
+    base: '/',
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },

@@ -5,19 +5,21 @@
       "description": "Chart of Account entry",
       "type": "object",
       "properties": {
+        "userId": { "type": "string" },
         "code": { "type": "string" },
         "name": { "type": "string" },
         "type": { "type": "string", "enum": ["ASET", "KEWAJIBAN", "EKUITAS", "PENDAPATAN", "BEBAN"] },
         "initialBalance": { "type": "number" },
         "currentBalance": { "type": "number" }
       },
-      "required": ["code", "name", "type"]
+      "required": ["userId", "code", "name", "type"]
     },
     "JournalEntry": {
       "title": "Journal Entry",
       "description": "Financial transaction record",
       "type": "object",
       "properties": {
+        "userId": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
         "referenceCode": { "type": "string" },
         "description": { "type": "string" },
@@ -25,7 +27,7 @@
         "createdBy": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["date", "referenceCode", "description", "totalAmount"]
+      "required": ["userId", "date", "referenceCode", "description", "totalAmount"]
     },
     "Transaction": {
       "title": "Transaction Item",
@@ -54,12 +56,13 @@
       "description": "Customer or Supplier information",
       "type": "object",
       "properties": {
+        "userId": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string" },
         "phone": { "type": "string" },
         "address": { "type": "string" }
       },
-      "required": ["name"]
+      "required": ["userId", "name"]
     }
   },
   "firestore": {

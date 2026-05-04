@@ -24,7 +24,8 @@ service cloud.firestore {
 
     // Validation Blueprints
     function isValidAccount(data) {
-      return data.keys().hasAll(['id', 'code', 'name', 'type', 'initialBalance', 'currentBalance']) 
+      return data.keys().hasAll(['id', 'userId', 'code', 'name', 'type', 'initialBalance', 'currentBalance']) 
+        && data.userId == request.auth.uid
         && data.code is string && data.code.size() <= 20
         && data.name is string && data.name.size() <= 100
         && data.type in ['ASET', 'KEWAJIBAN', 'EKUITAS', 'PENDAPATAN', 'BEBAN']
@@ -33,14 +34,16 @@ service cloud.firestore {
     }
 
     function isValidJournalEntry(data) {
-      return data.keys().hasAll(['date', 'referenceCode', 'description', 'transactions', 'createdAt', 'createdBy'])
+      return data.keys().hasAll(['userId', 'date', 'referenceCode', 'description', 'transactions', 'createdAt', 'createdBy'])
+        && data.userId == request.auth.uid
         && data.referenceCode is string && data.referenceCode.size() <= 50
         && data.description is string && data.description.size() <= 500
         && data.createdBy == request.auth.uid;
     }
 
     function isValidContact(data) {
-      return data.keys().hasAll(['name']) 
+      return data.keys().hasAll(['userId', 'name']) 
+        && data.userId == request.auth.uid
         && data.name is string && data.name.size() <= 200
         && (!data.keys().contains('email') || (data.email is string && data.email.size() <= 100))
         && (!data.keys().contains('phone') || (data.phone is string && data.phone.size() <= 50))
@@ -49,28 +52,28 @@ service cloud.firestore {
 
     // Collection Rules
     match /accounts/{accountId} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() && isValidAccount(incoming());
-      allow delete: if isAdmin();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create, update: if isVerified() && isValidAccount(incoming());
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /journal_entries/{entryId} {
-      allow read: if isSignedIn();
-      allow create: if isVerified() && isValidJournalEntry(incoming()) && isValidId(entryId);
-      allow update: if isAdmin() && isValidJournalEntry(incoming());
-      allow delete: if isAdmin();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() && isValidJournalEntry(incoming());
+      allow update: if (isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid)) && isValidJournalEntry(incoming());
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /customers/{customerId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create, update: if isVerified() && isValidContact(incoming());
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /suppliers/{supplierId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create, update: if isVerified() && isValidContact(incoming());
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /users/{userId} {

@@ -57,24 +57,33 @@ export const firebaseService = {
 
   // ACCOUNTS
   async getAccounts(): Promise<Account[]> {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return [];
+    
     const path = 'accounts';
     try {
-      const q = query(collection(db, path), orderBy('code', 'asc'));
+      const q = query(
+        collection(db, path), 
+        where('userId', '==', userId),
+        orderBy('code', 'asc')
+      );
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ ...doc.data() } as Account));
     } catch (error) {
-      // If accounts don't exist yet, we might get an error if the collection hasn't been created
-      // Return empty array to allow seeding
       return [];
     }
   },
 
   async seedInitialAccounts(accounts: Account[]) {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return;
+
     try {
       for (const acc of accounts) {
-        await setDoc(doc(db, 'accounts', acc.id), acc);
+        const accountWithUser = { ...acc, userId };
+        await setDoc(doc(db, 'accounts', `${userId}_${acc.id}`), accountWithUser);
       }
-      console.log("Successfully seeded initial accounts.");
+      console.log("Successfully seeded initial accounts for user:", userId);
     } catch (error) {
        console.error("Error seeding accounts:", error);
        handleFirestoreError(error, OperationType.WRITE, 'accounts');
@@ -82,8 +91,12 @@ export const firebaseService = {
   },
 
   async addAccount(account: Account) {
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("User must be logged in to add an account");
+
     try {
-      await setDoc(doc(db, 'accounts', account.id), account);
+      const accountWithUser = { ...account, userId };
+      await setDoc(doc(db, 'accounts', `${userId}_${account.id}`), accountWithUser);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'accounts');
     }
@@ -91,6 +104,9 @@ export const firebaseService = {
 
   // JOURNAL ENTRIES
   async saveJournalEntry(entry: Omit<JournalEntry, 'id'>, transactions: Transaction[]) {
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("User must be logged in to save entry");
+
     const path = 'journal_entries';
     try {
       await runTransaction(db, async (txn) => {
@@ -99,18 +115,17 @@ export const firebaseService = {
         // 1. Create Entry doc with transactions as a field
         txn.set(entryRef, {
           ...entry,
+          userId,
           createdAt: Timestamp.now(),
-          createdBy: auth.currentUser?.uid || 'system'
+          createdBy: userId
         });
 
         // 2. Update Account Balances
         for (const t of transactions) {
-          const accRef = doc(db, 'accounts', t.accountId);
+          const accRef = doc(db, 'accounts', `${userId}_${t.accountId}`);
           const accSnap = await txn.get(accRef);
           if (accSnap.exists()) {
             const currentBalance = accSnap.data().currentBalance || 0;
-            // Balance logic: Debit increases Assets/Expenses, Credit increases Liabilities/Equity/Revenue
-            // Simplification: Standard summation for this demo
             const diff = t.debit - t.credit;
             txn.update(accRef, { currentBalance: currentBalance + diff });
           }
@@ -122,7 +137,14 @@ export const firebaseService = {
   },
 
   listenEntries(callback: (entries: JournalEntry[]) => void) {
-    const q = query(collection(db, 'journal_entries'), orderBy('date', 'desc'));
+    const userId = auth.currentUser?.uid;
+    if (!userId) return () => {};
+
+    const q = query(
+      collection(db, 'journal_entries'), 
+      where('userId', '==', userId),
+      orderBy('date', 'desc')
+    );
     return onSnapshot(q, (snapshot) => {
       const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       callback(entries);
@@ -132,9 +154,16 @@ export const firebaseService = {
   },
 
   async getJournalEntries(): Promise<JournalEntry[]> {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return [];
+
     const path = 'journal_entries';
     try {
-      const q = query(collection(db, path), orderBy('date', 'desc'));
+      const q = query(
+        collection(db, path), 
+        where('userId', '==', userId),
+        orderBy('date', 'desc')
+      );
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
     } catch (error) {
@@ -145,8 +174,12 @@ export const firebaseService = {
 
   // CONTACTS (Customers & Suppliers)
   async getContacts(type: 'customers' | 'suppliers') {
+    const userId = auth.currentUser?.uid;
+    if (!userId) return [];
+
     try {
-      const snapshot = await getDocs(collection(db, type));
+      const q = query(collection(db, type), where('userId', '==', userId));
+      const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, type);
@@ -155,8 +188,11 @@ export const firebaseService = {
   },
 
   async addContact(type: 'customers' | 'suppliers', data: any) {
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("User must be logged in");
+
     try {
-      await addDoc(collection(db, type), data);
+      await addDoc(collection(db, type), { ...data, userId });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, type);
     }
