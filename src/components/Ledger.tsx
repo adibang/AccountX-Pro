@@ -32,15 +32,15 @@ export const Ledger: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <header className="flex justify-between items-center">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Buku Besar</h2>
-          <p className="text-slate-500">Rincian mutasi untuk setiap akun.</p>
+          <h2 className="text-xl md:text-2xl font-bold text-slate-900">Buku Besar</h2>
+          <p className="text-sm text-slate-500">Rincian mutasi untuk setiap akun.</p>
         </div>
         <select 
           value={selectedAccount} 
           onChange={(e) => setSelectedAccount(e.target.value)}
-          className="input-field max-w-xs"
+          className="input-field max-w-xs w-full sm:w-auto"
         >
           <option value="">Semua Akun</option>
           {accounts.map(acc => (
@@ -50,48 +50,50 @@ export const Ledger: React.FC = () => {
       </header>
 
       <div className="card overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="text-left py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal</th>
-              <th className="text-left py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Ref</th>
-              <th className="text-left py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Keterangan</th>
-              <th className="text-right py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Debit</th>
-              <th className="text-right py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Kredit</th>
-              <th className="text-right py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Saldo</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {ledgerData.length === 0 ? (
+        <div className="overflow-x-auto min-w-full">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <td colSpan={6} className="py-12 text-center text-slate-400">Pilih akun atau belum ada transaksi.</td>
+                <th className="py-3 px-4 md:px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal</th>
+                <th className="py-3 px-4 md:px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Ref</th>
+                <th className="py-3 px-4 md:px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Keterangan</th>
+                <th className="py-3 px-4 md:px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Debit</th>
+                <th className="py-3 px-4 md:px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Kredit</th>
+                <th className="py-3 px-4 md:px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Saldo</th>
               </tr>
-            ) : (
-              ledgerData.map((item, idx) => {
-                runningBalance += (item.debit - item.credit);
-                return (
-                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4 px-6 text-sm text-slate-600 font-medium">{item.date}</td>
-                    <td className="py-4 px-6 text-sm text-slate-900 font-bold">{item.ref}</td>
-                    <td className="py-4 px-6 text-sm text-slate-600">
-                      <div className="font-medium text-slate-900">{item.accountName}</div>
-                      <div className="text-xs">{item.description}</div>
-                    </td>
-                    <td className="py-4 px-6 text-sm text-right text-emerald-600 font-medium">
-                      {item.debit > 0 ? item.debit.toLocaleString() : "-"}
-                    </td>
-                    <td className="py-4 px-6 text-sm text-right text-rose-600 font-medium">
-                      {item.credit > 0 ? item.credit.toLocaleString() : "-"}
-                    </td>
-                    <td className="py-4 px-6 text-sm text-right text-slate-900 font-bold">
-                      {runningBalance.toLocaleString()}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {ledgerData.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400">Pilih akun atau belum ada transaksi.</td>
+                </tr>
+              ) : (
+                ledgerData.map((item, idx) => {
+                  runningBalance += (item.debit - item.credit);
+                  return (
+                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-4 px-4 md:px-6 text-sm text-slate-600 font-medium whitespace-nowrap">{item.date}</td>
+                      <td className="py-4 px-4 md:px-6 text-sm text-slate-900 font-bold whitespace-nowrap">{item.ref}</td>
+                      <td className="py-4 px-4 md:px-6 text-sm text-slate-600 min-w-[200px]">
+                        <div className="font-medium text-slate-900">{item.accountName}</div>
+                        <div className="text-xs">{item.description}</div>
+                      </td>
+                      <td className="py-4 px-4 md:px-6 text-sm text-right text-emerald-600 font-medium whitespace-nowrap">
+                        {item.debit > 0 ? item.debit.toLocaleString() : "-"}
+                      </td>
+                      <td className="py-4 px-4 md:px-6 text-sm text-right text-rose-600 font-medium whitespace-nowrap">
+                        {item.credit > 0 ? item.credit.toLocaleString() : "-"}
+                      </td>
+                      <td className="py-4 px-4 md:px-6 text-sm text-right text-slate-900 font-bold whitespace-nowrap">
+                        {runningBalance.toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

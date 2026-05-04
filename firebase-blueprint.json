@@ -48,6 +48,18 @@
         "role": { "type": "string", "enum": ["admin", "staff"] },
         "displayName": { "type": "string" }
       }
+    },
+    "Contact": {
+      "title": "Contact",
+      "description": "Customer or Supplier information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" }
+      },
+      "required": ["name"]
     }
   },
   "firestore": {
@@ -66,6 +78,14 @@
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User specific settings and roles"
+    },
+    "/customers/{customerId}": {
+      "schema": "Contact",
+      "description": "List of customers"
+    },
+    "/suppliers/{supplierId}": {
+      "schema": "Contact",
+      "description": "List of suppliers"
     }
   }
 }

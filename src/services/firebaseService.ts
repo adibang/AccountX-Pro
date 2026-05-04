@@ -36,15 +36,35 @@ export async function testConnection() {
 }
 
 export const firebaseService = {
+  // USERS
+  async getUserProfile(userId: string) {
+    try {
+      const docSnap = await getDoc(doc(db, 'users', userId));
+      return docSnap.exists() ? docSnap.data() : null;
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      return null;
+    }
+  },
+
+  async createUserProfile(userId: string, data: any) {
+    try {
+      await setDoc(doc(db, 'users', userId), data);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${userId}`);
+    }
+  },
+
   // ACCOUNTS
   async getAccounts(): Promise<Account[]> {
     const path = 'accounts';
     try {
       const q = query(collection(db, path), orderBy('code', 'asc'));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
+      return snapshot.docs.map(doc => ({ ...doc.data() } as Account));
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, path);
+      // If accounts don't exist yet, we might get an error if the collection hasn't been created
+      // Return empty array to allow seeding
       return [];
     }
   },
@@ -54,8 +74,18 @@ export const firebaseService = {
       for (const acc of accounts) {
         await setDoc(doc(db, 'accounts', acc.id), acc);
       }
+      console.log("Successfully seeded initial accounts.");
     } catch (error) {
        console.error("Error seeding accounts:", error);
+       handleFirestoreError(error, OperationType.WRITE, 'accounts');
+    }
+  },
+
+  async addAccount(account: Account) {
+    try {
+      await setDoc(doc(db, 'accounts', account.id), account);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'accounts');
     }
   },
 
@@ -66,19 +96,15 @@ export const firebaseService = {
       await runTransaction(db, async (txn) => {
         const entryRef = doc(collection(db, path));
         
-        // 1. Create Entry doc
+        // 1. Create Entry doc with transactions as a field
         txn.set(entryRef, {
           ...entry,
           createdAt: Timestamp.now(),
           createdBy: auth.currentUser?.uid || 'system'
         });
 
-        // 2. Add sub-collection transactions
+        // 2. Update Account Balances
         for (const t of transactions) {
-          const tRef = doc(collection(entryRef, 'transactions'));
-          txn.set(tRef, t);
-
-          // 3. Update Account Balances
           const accRef = doc(db, 'accounts', t.accountId);
           const accSnap = await txn.get(accRef);
           if (accSnap.exists()) {
@@ -103,5 +129,36 @@ export const firebaseService = {
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'journal_entries');
     });
+  },
+
+  async getJournalEntries(): Promise<JournalEntry[]> {
+    const path = 'journal_entries';
+    try {
+      const q = query(collection(db, path), orderBy('date', 'desc'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  // CONTACTS (Customers & Suppliers)
+  async getContacts(type: 'customers' | 'suppliers') {
+    try {
+      const snapshot = await getDocs(collection(db, type));
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, type);
+      return [];
+    }
+  },
+
+  async addContact(type: 'customers' | 'suppliers', data: any) {
+    try {
+      await addDoc(collection(db, type), data);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, type);
+    }
   }
 };

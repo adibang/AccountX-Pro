@@ -9,27 +9,42 @@ service cloud.firestore {
 
     // Helper Primitives
     function isSignedIn() { return request.auth != null; }
-    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isVerified() { 
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.email == 'adiblinggo@gmail.com'); 
+    }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
-    function isAdmin() { return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        (request.auth.token.email == 'adiblinggo@gmail.com') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      ); 
+    }
 
     // Validation Blueprints
     function isValidAccount(data) {
-      return data.keys().hasAll(['code', 'name', 'type', 'currentBalance']) 
+      return data.keys().hasAll(['id', 'code', 'name', 'type', 'initialBalance', 'currentBalance']) 
         && data.code is string && data.code.size() <= 20
         && data.name is string && data.name.size() <= 100
         && data.type in ['ASET', 'KEWAJIBAN', 'EKUITAS', 'PENDAPATAN', 'BEBAN']
+        && data.initialBalance is number
         && data.currentBalance is number;
     }
 
     function isValidJournalEntry(data) {
-      return data.keys().hasAll(['date', 'referenceCode', 'description', 'totalAmount', 'createdBy'])
+      return data.keys().hasAll(['date', 'referenceCode', 'description', 'transactions', 'createdAt', 'createdBy'])
         && data.referenceCode is string && data.referenceCode.size() <= 50
         && data.description is string && data.description.size() <= 500
-        && data.totalAmount is number && data.totalAmount >= 0
         && data.createdBy == request.auth.uid;
+    }
+
+    function isValidContact(data) {
+      return data.keys().hasAll(['name']) 
+        && data.name is string && data.name.size() <= 200
+        && (!data.keys().contains('email') || (data.email is string && data.email.size() <= 100))
+        && (!data.keys().contains('phone') || (data.phone is string && data.phone.size() <= 50))
+        && (!data.keys().contains('address') || (data.address is string && data.address.size() <= 500));
     }
 
     // Collection Rules
@@ -44,16 +59,23 @@ service cloud.firestore {
       allow create: if isVerified() && isValidJournalEntry(incoming()) && isValidId(entryId);
       allow update: if isAdmin() && isValidJournalEntry(incoming());
       allow delete: if isAdmin();
-      
-      match /transactions/{transactionId} {
-        allow read: if isSignedIn();
-        allow write: if isVerified(); // Deep check usually done at parent level or via batch
-      }
+    }
+
+    match /customers/{customerId} {
+      allow read: if isSignedIn();
+      allow create, update: if isVerified() && isValidContact(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /suppliers/{supplierId} {
+      allow read: if isSignedIn();
+      allow create, update: if isVerified() && isValidContact(incoming());
+      allow delete: if isAdmin();
     }
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create: if isSignedIn() && request.auth.uid == userId && incoming().role == 'staff'; // Auto-staff for self-reg
+      allow create: if isSignedIn() && request.auth.uid == userId; 
       allow update: if isAdmin() || (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['displayName']));
     }
   }

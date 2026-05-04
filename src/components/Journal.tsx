@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Save, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, AlertCircle, Loader2, Search, Download } from "lucide-react";
 import { Account, JournalEntry, Transaction } from "../types";
 import { firebaseService } from "../services/firebaseService";
 import { cn } from "../lib/utils";
@@ -9,6 +9,7 @@ export const Journal: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   
   // New Entry State
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
@@ -28,6 +29,11 @@ export const Journal: React.FC = () => {
   const totalDebit = transactions.reduce((sum, t) => sum + Number(t.debit || 0), 0);
   const totalCredit = transactions.reduce((sum, t) => sum + Number(t.credit || 0), 0);
   const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
+
+  const filteredEntries = entries.filter(e => 
+    e.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    e.referenceCode.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const addTransactionRow = () => {
     setTransactions([...transactions, { accountId: "", accountName: "", debit: 0, credit: 0 }]);
@@ -84,21 +90,39 @@ export const Journal: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Jurnal Umum</h2>
-          <p className="text-slate-500">Catat transaksi keuangan harian Anda.</p>
+          <h2 className="text-xl md:text-2xl font-bold text-slate-900">Jurnal Umum</h2>
+          <p className="text-sm text-slate-500">Catat transaksi keuangan harian Anda.</p>
         </div>
         {!showForm && (
           <button 
             onClick={() => setShowForm(true)}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center"
           >
             <Plus className="w-4 h-4" />
             Entry Baru
           </button>
         )}
       </div>
+      
+      {!showForm && (
+        <div className="flex flex-col md:flex-row gap-4 items-center mb-2">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Cari referensi atau keterangan..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input-field w-full pl-12 py-3 bg-white"
+            />
+          </div>
+          <button className="btn-secondary flex items-center gap-2 w-full md:w-auto h-full px-6 text-sm">
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
+        </div>
+      )}
 
       {showForm && (
         <div className="card p-6 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -113,45 +137,45 @@ export const Journal: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal</label>
+            <div className="w-full">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tanggal</label>
               <input 
                 type="date" 
                 value={date} 
                 onChange={(e) => setDate(e.target.value)} 
-                className="input-field" 
+                className="input-field w-full" 
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">No. Referensi</label>
+            <div className="w-full">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">No. Referensi</label>
               <input 
                 type="text" 
                 placeholder="REV-001" 
                 value={reference} 
                 onChange={(e) => setReference(e.target.value)} 
-                className="input-field" 
+                className="input-field w-full" 
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Keterangan</label>
+            <div className="w-full">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Keterangan</label>
               <input 
                 type="text" 
                 placeholder="Penjualan barang..." 
                 value={description} 
                 onChange={(e) => setDescription(e.target.value)} 
-                className="input-field" 
+                className="input-field w-full" 
               />
             </div>
           </div>
 
-          <div className="overflow-x-auto mb-6">
-            <table className="w-full">
-              <thead>
+          <div className="overflow-x-auto min-w-full mb-6 border border-slate-100 rounded-lg">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50">
                 <tr className="border-b border-slate-200">
-                  <th className="text-left py-3 px-2 font-semibold text-sm">Akun</th>
-                  <th className="text-right py-3 px-2 font-semibold text-sm w-32">Debit (Rp)</th>
-                  <th className="text-right py-3 px-2 font-semibold text-sm w-32">Kredit (Rp)</th>
-                  <th className="w-10"></th>
+                  <th className="py-3 px-4 font-bold text-xs text-slate-500 uppercase tracking-wider whitespace-nowrap">Akun</th>
+                  <th className="py-3 px-4 font-bold text-xs text-slate-500 uppercase tracking-wider text-right w-32 whitespace-nowrap">Debit (Rp)</th>
+                  <th className="py-3 px-4 font-bold text-xs text-slate-500 uppercase tracking-wider text-right w-32 whitespace-nowrap">Kredit (Rp)</th>
+                  <th className="w-12"></th>
                 </tr>
               </thead>
               <tbody>
@@ -253,38 +277,39 @@ export const Journal: React.FC = () => {
         </div>
       )}
 
-      {/* History Table */}
       <div className="card overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="text-left py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal</th>
-              <th className="text-left py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Referensi</th>
-              <th className="text-left py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Keterangan</th>
-              <th className="text-right py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Total Amount</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {entries.length === 0 ? (
+        <div className="overflow-x-auto min-w-full">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <td colSpan={4} className="py-12 text-center text-slate-400">
-                  Belum ada transaksi jurnal.
-                </td>
+                <th className="py-3 px-4 md:px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tanggal</th>
+                <th className="py-3 px-4 md:px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Referensi</th>
+                <th className="py-3 px-4 md:px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Keterangan</th>
+                <th className="py-3 px-4 md:px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Total Amount</th>
               </tr>
-            ) : (
-              entries.map((entry) => (
-                <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-4 px-6 text-sm text-slate-600 font-medium">{entry.date}</td>
-                  <td className="py-4 px-6 text-sm text-slate-900 font-bold">{entry.referenceCode}</td>
-                  <td className="py-4 px-6 text-sm text-slate-600">{entry.description}</td>
-                  <td className="py-4 px-6 text-sm text-right text-slate-900 font-bold">
-                    Rp {entry.transactions.reduce((sum, t) => sum + t.debit, 0).toLocaleString()}
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredEntries.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center text-slate-400">
+                    {searchTerm ? "Tidak ada hasil pencarian." : "Belum ada transaksi jurnal."}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filteredEntries.map((entry) => (
+                  <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-4 px-4 md:px-6 text-sm text-slate-600 font-medium whitespace-nowrap">{entry.date}</td>
+                    <td className="py-4 px-4 md:px-6 text-sm text-slate-900 font-bold whitespace-nowrap">{entry.referenceCode}</td>
+                    <td className="py-4 px-4 md:px-6 text-sm text-slate-600 min-w-[200px]">{entry.description}</td>
+                    <td className="py-4 px-4 md:px-6 text-sm text-right text-slate-900 font-bold whitespace-nowrap">
+                      Rp {entry.transactions.reduce((sum, t) => sum + t.debit, 0).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
