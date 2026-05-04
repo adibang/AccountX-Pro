@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Primitives
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isAdmin() { return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; }
+
+    // Validation Blueprints
+    function isValidAccount(data) {
+      return data.keys().hasAll(['code', 'name', 'type', 'currentBalance']) 
+        && data.code is string && data.code.size() <= 20
+        && data.name is string && data.name.size() <= 100
+        && data.type in ['ASET', 'KEWAJIBAN', 'EKUITAS', 'PENDAPATAN', 'BEBAN']
+        && data.currentBalance is number;
+    }
+
+    function isValidJournalEntry(data) {
+      return data.keys().hasAll(['date', 'referenceCode', 'description', 'totalAmount', 'createdBy'])
+        && data.referenceCode is string && data.referenceCode.size() <= 50
+        && data.description is string && data.description.size() <= 500
+        && data.totalAmount is number && data.totalAmount >= 0
+        && data.createdBy == request.auth.uid;
+    }
+
+    // Collection Rules
+    match /accounts/{accountId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() && isValidAccount(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /journal_entries/{entryId} {
+      allow read: if isSignedIn();
+      allow create: if isVerified() && isValidJournalEntry(incoming()) && isValidId(entryId);
+      allow update: if isAdmin() && isValidJournalEntry(incoming());
+      allow delete: if isAdmin();
+      
+      match /transactions/{transactionId} {
+        allow read: if isSignedIn();
+        allow write: if isVerified(); // Deep check usually done at parent level or via batch
+      }
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId && incoming().role == 'staff'; // Auto-staff for self-reg
+      allow update: if isAdmin() || (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['displayName']));
+    }
+  }
+}

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUDA POS - Accounting</title>
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    <!-- CSS Eksternal -->
+    <link rel="stylesheet" href="css/sidebar.css">
+    <style>
+        /* ===== DESIGN RECIPE: TECHNICAL DASHBOARD ===== */
+        :root {
+            --bg: #f8f9fa;
+            --ink: #141414;
+            --line: #e0e0e0;
+            --primary: #006B54;
+            --primary-light: #e6f0ec;
+            --f-mono: 'JetBrains Mono', 'Courier New', monospace;
+            --f-sans: system-ui, -apple-system, sans-serif;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: var(--f-sans); }
+        body { background: var(--bg); color: var(--ink); font-size: 14px; }
+        .header { display:flex; justify-content:space-between; align-items:center; padding:0.6rem 1.5rem; background:white; border-bottom: 1px solid var(--line); position:sticky; top:0; z-index:100; }
+        .menu-toggle { background:none; border:none; cursor:pointer; color: var(--primary); padding:0.4rem; border-radius:6px; }
+        .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); z-index:150; display:none; }
+        .overlay.active { display:block; }
+        .main-content { padding:2rem; max-width:1200px; margin:0 auto; }
+        .page-title { margin-bottom:1.5rem; font-size:1.8rem; font-weight:700; color: var(--primary); letter-spacing: -0.02em; }
+
+        /* Tabs */
+        .accounting-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: white; padding: 0.4rem; border-radius: 12px; border: 1px solid var(--line); width: fit-content; }
+        .tab-btn { padding: 0.6rem 1.2rem; border: none; background: transparent; border-radius: 8px; font-weight: 600; color: #666; cursor: pointer; transition: all 0.2s; }
+        .tab-btn.active { background: var(--primary); color: white; }
+
+        /* Data Grid Pattern */
+        .data-grid-container { background: white; border-radius: 12px; border: 1px solid var(--line); overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .grid-header { display: grid; padding: 1rem; background: var(--bg); border-bottom: 2px solid var(--line); }
+        .col-header { font-family: var(--f-sans); font-weight: 700; font-size: 11px; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; }
+        .data-row { display: grid; padding: 1rem; border-bottom: 1px solid var(--line); transition: background 0.1s ease; }
+        .data-row:hover { background: var(--primary-light); }
+        .data-value { font-family: var(--f-mono); font-size: 13px; color: #333; }
+        .data-value.numeric { text-align: right; }
+        
+        /* Specific Grids */
+        .journal-grid { grid-template-columns: 120px 1fr 100px 100px 100px; }
+        .trial-balance-grid { grid-template-columns: 120px 1fr 150px 150px; }
+        .accounts-grid { grid-template-columns: 120px 1fr 150px 150px; }
+
+        .journal-item-row { display: grid; grid-template-columns: 1fr 100px 100px; padding: 0.3rem 0; font-size: 12px; }
+        .journal-item-row.indent { padding-left: 1.5rem; }
+
+        .balance-summary { margin-top: 1.5rem; padding: 1rem; background: var(--primary-light); border-radius: 12px; display: flex; justify-content: flex-end; gap: 2rem; }
+        .summary-label { font-weight: 700; color: var(--primary); text-transform: uppercase; font-size: 11px; }
+        .summary-value { font-family: var(--f-mono); font-weight: 700; font-size: 16px; }
+
+        @media (max-width: 768px) {
+            .journal-grid { grid-template-columns: 80px 1fr; }
+            .col-debit, .col-credit, .col-code { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="overlay"></div>
+    <aside id="sidebar" class="sidebar"></aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle"><i data-feather="menu"></i></button>
+        </div>
+        <div class="header-right">
+            <button class="btn-login" id="loginBtn"><i data-feather="log-in"></i><span>Login</span></button>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <h1 class="page-title">Financial Accounting</h1>
+
+        <div class="accounting-tabs">
+            <button class="tab-btn active" data-tab="journal">Jurnal Umum</button>
+            <button class="tab-btn" data-tab="trialBalance">Neraca Saldo</button>
+            <button class="tab-btn" data-tab="accounts">Daftar Akun</button>
+        </div>
+
+        <!-- Panel Jurnal -->
+        <div id="panelJournal" class="panel">
+            <div class="data-grid-container">
+                <div class="grid-header journal-grid">
+                    <div class="col-header">Tanggal</div>
+                    <div class="col-header">Deskripsi / Akun</div>
+                    <div class="col-header col-code">Kode</div>
+                    <div class="col-header numeric col-debit">Debit</div>
+                    <div class="col-header numeric col-credit">Kredit</div>
+                </div>
+                <div id="journalBody"></div>
+            </div>
+        </div>
+
+        <!-- Panel Neraca Saldo -->
+        <div id="panelTrialBalance" class="panel" style="display:none;">
+            <div class="data-grid-container">
+                <div class="grid-header trial-balance-grid">
+                    <div class="col-header">Kode</div>
+                    <div class="col-header">Nama Akun</div>
+                    <div class="col-header numeric">Debit</div>
+                    <div class="col-header numeric">Kredit</div>
+                </div>
+                <div id="trialBalanceBody"></div>
+            </div>
+            <div class="balance-summary">
+                <div>
+                    <span class="summary-label">Total Debit</span>
+                    <div class="summary-value" id="totalDebit">Rp 0</div>
+                </div>
+                <div>
+                    <span class="summary-label">Total Kredit</span>
+                    <div class="summary-value" id="totalCredit">Rp 0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Daftar Akun -->
+        <div id="panelAccounts" class="panel" style="display:none;">
+            <div class="data-grid-container">
+                <div class="grid-header accounts-grid">
+                    <div class="col-header">Kode</div>
+                    <div class="col-header">Nama Akun</div>
+                    <div class="col-header">Kategori</div>
+                    <div class="col-header numeric">Saldo</div>
+                </div>
+                <div id="accountsBody"></div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { auth, dbCloud, onAuthStateChanged } from './js/firebase-config.js';
+        import { initAuth, checkPageAccess, logoutUser, loginWithGoogle } from './js/auth-guard.js';
+        import { renderSidebar } from './js/sidebar.js';
+        import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { initializeCOA } from './js/accounting-service.js';
+
+        feather.replace();
+
+        const formatRp = (n) => n ? n.toLocaleString('id-ID') : '0';
+
+        async function loadJournal() {
+            const body = document.getElementById('journalBody');
+            body.innerHTML = '<div style="padding:1rem;">Memuat data jurnal...</div>';
+            
+            try {
+                const snap = await getDocs(query(collection(dbCloud, 'ledger'), orderBy('date', 'desc')));
+                if (snap.empty) {
+                    body.innerHTML = '<div style="padding:1rem; text-align:center;">Belum ada transaksi jurnal.</div>';
+                    return;
+                }
+
+                body.innerHTML = snap.docs.map(doc => {
+                    const data = doc.data();
+                    const date = data.date?.toDate?.() ? data.date.toDate().toLocaleDateString('id-ID') : '-';
+                    
+                    let itemsHtml = data.items.map(item => `
+                        <div class="journal-item-row ${item.credit > 0 ? 'indent' : ''}">
+                            <div class="data-value">${item.accountCode} - ${getAccountName(item.accountCode)}</div>
+                            <div class="data-value numeric">${item.debit > 0 ? formatRp(item.debit) : ''}</div>
+                            <div class="data-value numeric">${item.credit > 0 ? formatRp(item.credit) : ''}</div>
+                        </div>
+                    `).join('');
+
+                    return `
+                        <div class="data-row journal-grid">
+                            <div class="data-value">${date}</div>
+                            <div style="grid-column: span 4;">
+                                <div style="font-weight:700; margin-bottom:0.5rem;">${data.description}</div>
+                                ${itemsHtml}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                body.innerHTML = `<div style="padding:1rem; color:red;">Gagal memuat: ${e.message}</div>`;
+            }
+        }
+
+        async function loadTrialBalance() {
+            const body = document.getElementById('trialBalanceBody');
+            body.innerHTML = '<div style="padding:1rem;">Menghitung neraca saldo...</div>';
+            
+            try {
+                const snap = await getDocs(collection(dbCloud, 'accounts'));
+                let totalD = 0, totalC = 0;
+                
+                const rows = snap.docs.map(doc => {
+                    const acc = doc.data();
+                    let d = 0, c = 0;
+                    if (acc.type === 'debit') {
+                        if (acc.balance >= 0) d = acc.balance; else c = Math.abs(acc.balance);
+                    } else {
+                        if (acc.balance >= 0) c = acc.balance; else d = Math.abs(acc.balance);
+                    }
+                    totalD += d; totalC += c;
+                    
+                    return `
+                        <div class="data-row trial-balance-grid">
+                            <div class="data-value">${acc.code}</div>
+                            <div class="data-value" style="font-weight:600;">${acc.name}</div>
+                            <div class="data-value numeric">${d > 0 ? formatRp(d) : '-'}</div>
+                            <div class="data-value numeric">${c > 0 ? formatRp(c) : '-'}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                body.innerHTML = rows || '<div style="padding:1rem; text-align:center;">Tidak ada data akun.</div>';
+                document.getElementById('totalDebit').textContent = 'Rp ' + formatRp(totalD);
+                document.getElementById('totalCredit').textContent = 'Rp ' + formatRp(totalC);
+            } catch (e) {
+                body.innerHTML = `<div style="padding:1rem; color:red;">Gagal memuat: ${e.message}</div>`;
+            }
+        }
+
+        let accountMap = {};
+        async function loadAccounts() {
+            const body = document.getElementById('accountsBody');
+            try {
+                const snap = await getDocs(collection(dbCloud, 'accounts'));
+                accountMap = {};
+                body.innerHTML = snap.docs.map(doc => {
+                    const acc = doc.data();
+                    accountMap[acc.code] = acc.name;
+                    return `
+                        <div class="data-row accounts-grid">
+                            <div class="data-value">${acc.code}</div>
+                            <div class="data-value" style="font-weight:600;">${acc.name}</div>
+                            <div class="data-value">${acc.category}</div>
+                            <div class="data-value numeric">${formatRp(acc.balance)}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {}
+        }
+
+        function getAccountName(code) { return accountMap[code] || 'Ukwn Account'; }
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+            
+            if (tab === 'journal') {
+                document.getElementById('panelJournal').style.display = 'block';
+                loadJournal();
+            } else if (tab === 'trialBalance') {
+                document.getElementById('panelTrialBalance').style.display = 'block';
+                loadTrialBalance();
+            } else if (tab === 'accounts') {
+                document.getElementById('panelAccounts').style.display = 'block';
+                loadAccounts();
+            }
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+        async function init() {
+            await initAuth();
+            if (!checkPageAccess()) return;
+            renderSidebar({ containerId: 'sidebar', overlayId: 'overlay', menuToggleId: 'menuToggle', closeSidebarId: 'closeSidebar' });
+            
+            onAuthStateChanged(auth, u => {
+                const loginBtn = document.getElementById('loginBtn');
+                if (loginBtn) {
+                    loginBtn.innerHTML = u ? '<i data-feather="log-out"></i><span>Logout</span>' : '<i data-feather="log-in"></i><span>Login</span>';
+                    feather.replace();
+                }
+            });
+
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.onclick = async () => {
+                    if (auth.currentUser) await logoutUser();
+                    else await loginWithGoogle();
+                };
+            }
+
+            await initializeCOA();
+            await loadAccounts(); // Load map first
+            
+            const hash = window.location.hash.substring(1);
+            showTab(hash || 'journal');
+        }
+        init();
+    </script>
+</body>
+</html>

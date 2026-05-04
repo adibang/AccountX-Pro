@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUDA POS - Master Data</title>
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="css/sidebar.css">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif; }
+        body { background:#f5f5f5; color:#333; font-size:14px; }
+        .header { display:flex; justify-content:space-between; align-items:center; padding:0.6rem 1.5rem; background:white; position:sticky; top:0; z-index:100; }
+        .main-content { padding:1.5rem; max-width:1200px; margin:0 auto; }
+        .card { background: white; border-radius: 20px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom:1rem; }
+        .btn { background:#006B54; color:white; border:none; padding:0.6rem 1.2rem; border-radius:20px; cursor:pointer; }
+        .form-group { margin-bottom: 1rem; }
+        .form-control { width:100%; padding:0.6rem; border:1px solid #ddd; border-radius:12px; }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="overlay"></div>
+    <aside id="sidebar" class="sidebar"></aside>
+    <header class="header">
+        <div class="header-left"><button class="menu-toggle" id="menuToggle"><i data-feather="menu"></i></button></div>
+        <div class="header-right"><button class="btn-login" id="loginBtn"><i data-feather="log-in"></i><span>Login</span></button></div>
+    </header>
+
+    <main class="main-content">
+        <h1 class="page-title">Master Data Produk</h1>
+        <div class="card">
+            <h3>Tambah Produk</h3>
+            <form id="productForm">
+                <div class="form-group"><label>Nama Produk</label><input type="text" id="name" class="form-control" required></div>
+                <div class="form-group"><label>Kode</label><input type="text" id="kode" class="form-control"></div>
+                <div class="form-group"><label>Harga Pokok (HPP)</label><input type="number" id="basePrice" class="form-control" required></div>
+                <div class="form-group"><label>Harga Jual</label><input type="number" id="sellPrice" class="form-control" required></div>
+                <div class="form-group"><label>Stok Awal</label><input type="number" id="stock" class="form-control" value="0"></div>
+                <button type="submit" class="btn">Simpan Produk</button>
+            </form>
+        </div>
+    </main>
+
+    <script type="module">
+        import { auth, dbCloud, onAuthStateChanged } from './js/firebase-config.js';
+        import { initAuth, checkPageAccess, logoutUser, loginWithGoogle } from './js/auth-guard.js';
+        import { renderSidebar } from './js/sidebar.js';
+        import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        feather.replace();
+
+        document.getElementById('productForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                nama: document.getElementById('name').value,
+                kode: document.getElementById('kode').value,
+                hargaDasar: parseFloat(document.getElementById('basePrice').value),
+                hargaJual: parseFloat(document.getElementById('sellPrice').value),
+                stokAwal: parseFloat(document.getElementById('stock').value),
+                deleted: false,
+                createdAt: serverTimestamp()
+            };
+            try {
+                await addDoc(collection(dbCloud, 'produk'), data);
+                alert('Produk berhasil ditambahkan!');
+                e.target.reset();
+            } catch (e) { alert(e.message); }
+        };
+
+        async function init() {
+            await initAuth();
+            if (!checkPageAccess()) return;
+            renderSidebar({ containerId: 'sidebar', overlayId: 'overlay', menuToggleId: 'menuToggle', closeSidebarId: 'closeSidebar' });
+
+            onAuthStateChanged(auth, u => {
+                const loginBtn = document.getElementById('loginBtn');
+                if (loginBtn) {
+                    loginBtn.innerHTML = u ? '<i data-feather="log-out"></i><span>Logout</span>' : '<i data-feather="log-in"></i><span>Login</span>';
+                    feather.replace();
+                }
+            });
+
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.onclick = async () => {
+                    if (auth.currentUser) await logoutUser();
+                    else await loginWithGoogle();
+                };
+            }
+        }
+        init();
+    </script>
+</body>
+</html>

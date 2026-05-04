@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUDA POS - Sales</title>
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    <!-- CSS Eksternal -->
+    <link rel="stylesheet" href="css/sidebar.css">
+    <style>
+        /* [Existing Styles from User Request] */
+        * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif; }
+        body { background:#f5f5f5; color:#333; font-size:14px; }
+        .text-primary { color:#006B54; }
+        .header { display:flex; justify-content:space-between; align-items:center; padding:0.6rem 1.5rem; background:white; box-shadow:0 2px 4px rgba(0,0,0,0.05); position:sticky; top:0; z-index:100; }
+        .menu-toggle { background:none; border:none; cursor:pointer; color:#006B54; padding:0.4rem; border-radius:6px; }
+        .menu-toggle:hover { background:#f0f0f0; }
+        .btn-login { background:#006B54; color:white; border:none; padding:0.4rem 1rem; border-radius:20px; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:0.4rem; font-size:0.9rem; }
+        .btn-login:hover { background:#004d3b; }
+        .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); z-index:150; display:none; }
+        .overlay.active { display:block; }
+        .main-content { padding:1.5rem; max-width:1200px; margin:0 auto; }
+        .page-title { margin-bottom:1.2rem; font-size:1.6rem; font-weight:600; color:#006B54; }
+        .sales-toolbar { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.5rem; background: white; padding: 1rem; border-radius: 20px; border: 1px solid #f0f0f0; }
+        .toolbar-row { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+        .warehouse-select { min-width: 160px; flex: 1 1 auto; padding: 0.5rem; border: 1px solid #ddd; border-radius: 20px; font-size: 0.95rem; background-color: white; height: 38px; cursor: pointer; }
+        .view-toggle { display: flex; gap: 0.3rem; background: #f0f0f0; padding: 0.3rem; border-radius: 20px; flex-shrink: 0; }
+        .view-toggle button { background: transparent; border: none; padding: 0.4rem 0.6rem; border-radius: 20px; cursor: pointer; color: #666; display: flex; align-items: center; gap: 0.2rem; font-size: 0.9rem; }
+        .view-toggle button.active { background: white; color: #006B54; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .search-box { flex: 1; min-width: 150px; display: flex; align-items: center; background: white; border: 1px solid #ddd; border-radius: 20px; padding: 0 0.5rem; height: 38px; position: relative; }
+        .search-box input { width: 100%; padding: 0.5rem 0.5rem; border: none; outline: none; font-size: 0.95rem; background: transparent; }
+        .action-icons { display: flex; gap: 0.5rem; flex-shrink: 0; }
+        .action-icons button { position: relative; background: transparent; border: 1px solid #ddd; border-radius: 20px; padding: 0.5rem; cursor: pointer; color: #006B54; display: flex; align-items: center; justify-content: center; transition: all 0.2s; height: 38px; width: 38px; }
+        .action-icons .badge { position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .product-card { cursor: pointer; transition: all 0.2s; background: white; border: 1px solid #f0f0f0; border-radius: 20px; padding: 1rem; text-align: center; }
+        .product-card:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .product-name { font-weight: 600; color: #006B54; font-size: 1rem; }
+        .qty-control { display: flex; align-items: center; justify-content: center; gap: 0.3rem; margin-top: 0.5rem; }
+        .qty-control button { background: transparent; border: 1px solid #ddd; border-radius: 20px; width: 28px; height: 28px; cursor: pointer; }
+        .qty-control input { width: 50px; text-align: center; border: 1px solid #ddd; border-radius: 20px; padding: 0.2rem; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 20px; width: 90%; max-width: 650px; padding: 1.5rem; }
+        .btn-primary { background: #006B54; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 20px; cursor: pointer; font-weight: 600; }
+        .btn-secondary { background: #ccc; color: #333; border: none; padding: 0.8rem 1.5rem; border-radius: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="overlay"></div>
+    <aside id="sidebar" class="sidebar"></aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle"><i data-feather="menu"></i></button>
+        </div>
+        <div class="header-right">
+            <button class="btn-login" id="loginBtn"><i data-feather="log-in"></i><span>Login</span></button>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <h1 class="page-title">Sales (POS)</h1>
+        <div class="sales-toolbar">
+            <div class="toolbar-row">
+                <select class="warehouse-select" id="warehouseSelect">
+                    <option value="">Pilih Gudang</option>
+                </select>
+                <div class="search-box">
+                    <i data-feather="search"></i>
+                    <input type="text" id="barcodeInput" placeholder="Cari kode atau nama...">
+                </div>
+                <div class="action-icons">
+                    <button id="btnCart"><i data-feather="shopping-cart"></i><span class="badge" id="cartBadge">0</span></button>
+                </div>
+                <button class="btn-primary" id="btnPayment">Checkout</button>
+            </div>
+        </div>
+
+        <div id="productContainer" class="product-grid"></div>
+    </main>
+
+    <!-- Modal Cart & Payment (Simplified) -->
+    <div class="modal" id="modalPayment">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Checkout</h3></div>
+            <div id="paymentSummary"></div>
+            <div class="form-group" style="margin-top:1rem;">
+                <label>Bayar Tunai</label>
+                <input type="number" id="payCash" class="form-control" style="width:100%; padding:0.5rem;">
+            </div>
+            <div style="display:flex; gap:1rem; margin-top:1.5rem; justify-content:flex-end;">
+                <button class="btn-secondary" id="closePayment">Batal</button>
+                <button class="btn-primary" id="processPayment">Proses & Jurnal</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, dbCloud, provider, signInWithPopup, onAuthStateChanged } from './js/firebase-config.js';
+        import { initAuth, checkPageAccess, logoutUser, loginWithGoogle } from './js/auth-guard.js';
+        import { renderSidebar } from './js/sidebar.js';
+        import { collection, getDocs, doc, query, where, addDoc, serverTimestamp, increment, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        
+        // --- Import Accounting Service ---
+        import { postSalesTransaction, initializeCOA } from './js/accounting-service.js';
+
+        feather.replace();
+
+        let allProducts = [];
+        let cartItems = [];
+
+        async function loadProducts() {
+            const snap = await getDocs(query(collection(dbCloud, 'produk'), where('deleted', '==', false)));
+            allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderProducts();
+        }
+
+        function renderProducts() {
+            const container = document.getElementById('productContainer');
+            container.innerHTML = allProducts.map(p => `
+                <div class="product-card" onclick="addToCart('${p.id}')">
+                    <div class="product-name">${p.nama}</div>
+                    <div style="color:#006B54; font-weight:600; margin-top:0.5rem;">Rp ${p.hargaJual.toLocaleString()}</div>
+                    <div style="font-size:0.8rem; color:#999;">Stok: ${p.stokAwal}</div>
+                </div>
+            `).join('');
+        }
+
+        window.addToCart = (id) => {
+            const p = allProducts.find(x => x.id === id);
+            const existing = cartItems.find(x => x.id === id);
+            if (existing) existing.qty++;
+            else cartItems.push({ ...p, qty: 1 });
+            updateCartUI();
+        };
+
+        function updateCartUI() {
+            document.getElementById('cartBadge').textContent = cartItems.reduce((s, i) => s + i.qty, 0);
+        }
+
+        document.getElementById('btnPayment').onclick = () => {
+            if (!cartItems.length) return alert('Keranjang kosong');
+            const total = cartItems.reduce((s, i) => s + (i.hargaJual * i.qty), 0);
+            document.getElementById('paymentSummary').innerHTML = `<h3>Total: Rp ${total.toLocaleString()}</h3>`;
+            document.getElementById('modalPayment').classList.add('active');
+        };
+
+        document.getElementById('closePayment').onclick = () => document.getElementById('modalPayment').classList.remove('active');
+
+        document.getElementById('processPayment').onclick = async () => {
+            const total = cartItems.reduce((s, i) => s + (i.hargaJual * i.qty), 0);
+            const cogsTotal = cartItems.reduce((s, i) => s + ((i.hargaDasar || 0) * i.qty), 0);
+            const paid = parseFloat(document.getElementById('payCash').value) || 0;
+            
+            if (paid < total) return alert('Pembayaran kurang');
+
+            try {
+                const batch = writeBatch(dbCloud);
+                const salesRef = doc(collection(dbCloud, 'sales'));
+                
+                const salesData = {
+                    items: cartItems,
+                    total: total,
+                    totalPokok: cogsTotal,
+                    paidAmount: paid,
+                    change: paid - total,
+                    createdAt: serverTimestamp()
+                };
+
+                batch.set(salesRef, salesData);
+
+                // Update Stocks
+                cartItems.forEach(item => {
+                    const ref = doc(dbCloud, 'produk', item.id);
+                    batch.update(ref, { stokAwal: increment(-item.qty) });
+                });
+
+                await batch.commit();
+
+                // --- INTEGRASI AKUNTANSI ---
+                await postSalesTransaction(
+                    salesRef.id, 
+                    total, 
+                    cogsTotal, 
+                    [{ method: 'cash', amount: total }], 
+                    0 // No outstanding for this simple ver
+                );
+
+                alert('Transaksi Berhasil & Jurnal Dicatat!');
+                cartItems = [];
+                updateCartUI();
+                document.getElementById('modalPayment').classList.remove('active');
+                loadProducts();
+            } catch (e) {
+                alert('Gagal: ' + e.message);
+            }
+        };
+
+        async function init() {
+            await initAuth();
+            if (!checkPageAccess()) return;
+            renderSidebar({ containerId: 'sidebar', overlayId: 'overlay', menuToggleId: 'menuToggle', closeSidebarId: 'closeSidebar' });
+            
+            onAuthStateChanged(auth, u => {
+                const loginBtn = document.getElementById('loginBtn');
+                if (loginBtn) {
+                    loginBtn.innerHTML = u ? '<i data-feather="log-out"></i><span>Logout</span>' : '<i data-feather="log-in"></i><span>Login</span>';
+                    feather.replace();
+                }
+            });
+
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.onclick = async () => {
+                    if (auth.currentUser) await logoutUser();
+                    else await loginWithGoogle();
+                };
+            }
+
+            // Init COA if needed
+            await initializeCOA();
+            await loadProducts();
+        }
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUDA POS - Purchase</title>
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="css/sidebar.css">
+    <style>
+        /* [Existing Styles from User Request] */
+        * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif; }
+        body { background:#f5f5f5; color:#333; font-size:14px; }
+        .text-primary { color:#006B54; }
+        .header { display:flex; justify-content:space-between; align-items:center; padding:0.6rem 1.5rem; background:white; position:sticky; top:0; z-index:100; }
+        .main-content { padding:1.5rem; max-width:1400px; margin:0 auto; }
+        .detail-box { background:white; border-radius:12px; padding:1.5rem; border:1px solid #f0f0f0; margin-bottom:1rem; }
+        .form-group { margin-bottom:1rem; }
+        .form-group label { display:block; margin-bottom:0.3rem; font-weight:600; }
+        .form-control { width:100%; padding:0.6rem; border:1px solid #ddd; border-radius:12px; }
+        .btn-save { background:#006B54; color:white; border:none; padding:0.8rem 2rem; border-radius:20px; font-weight:600; cursor:pointer; width:100%; }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="overlay"></div>
+    <aside id="sidebar" class="sidebar"></aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" id="menuToggle"><i data-feather="menu"></i></button>
+        </div>
+        <div class="header-right">
+            <button class="btn-login" id="loginBtn"><i data-feather="log-in"></i><span>Login</span></button>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <h1 class="page-title">Purchase Order (Pembelian)</h1>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+            <div class="form-group">
+                <label>Supplier</label>
+                <select id="supplierSelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Warehouse</label>
+                <select id="warehouseSelect" class="form-control"></select>
+            </div>
+        </div>
+
+        <div class="detail-box">
+            <h3>Item Pembelian</h3>
+            <div id="purchaseItems">
+                <!-- Simplified for brevity, usually a loop of products -->
+                <p>Silakan pilih produk untuk dibeli.</p>
+            </div>
+            <div class="form-group" style="margin-top:1rem;">
+                <label>Total Transaksi (Rp)</label>
+                <input type="number" id="totalAmount" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Jumlah Dibayar (Rp)</label>
+                <input type="number" id="paidAmount" class="form-control">
+            </div>
+            <button class="btn-save" id="savePurchase">Simpan & Jurnal</button>
+        </div>
+    </main>
+
+    <script type="module">
+        import { auth, dbCloud, onAuthStateChanged } from './js/firebase-config.js';
+        import { initAuth, checkPageAccess, logoutUser, loginWithGoogle } from './js/auth-guard.js';
+        import { renderSidebar } from './js/sidebar.js';
+        import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        
+        // --- Import Accounting ---
+        import { postPurchaseTransaction } from './js/accounting-service.js';
+
+        feather.replace();
+
+        document.getElementById('savePurchase').onclick = async () => {
+            const total = parseFloat(document.getElementById('totalAmount').value) || 0;
+            const paid = parseFloat(document.getElementById('paidAmount').value) || 0;
+            const supplierId = document.getElementById('supplierSelect').value;
+            const outstanding = total - paid;
+            
+            if (total <= 0) return alert('Total tidak boleh 0');
+
+            try {
+                const purchaseRef = await addDoc(collection(dbCloud, 'purchase'), {
+                    tanggal: new Date().toISOString(),
+                    supplierId,
+                    total,
+                    dibayar: paid,
+                    utang: outstanding > 0 ? outstanding : 0,
+                    createdAt: serverTimestamp()
+                });
+
+                // --- INTEGRASI AKUNTANSI ---
+                await postPurchaseTransaction(purchaseRef.id, total, paid, (outstanding > 0 ? outstanding : 0));
+
+                alert('Pembelian Berhasil & Jurnal Dicatat!');
+                window.location.reload();
+            } catch (e) {
+                alert('Gagal: ' + e.message);
+            }
+        };
+
+        async function init() {
+            await initAuth();
+            if (!checkPageAccess()) return;
+            renderSidebar({ containerId: 'sidebar', overlayId: 'overlay', menuToggleId: 'menuToggle', closeSidebarId: 'closeSidebar' });
+
+            onAuthStateChanged(auth, u => {
+                const loginBtn = document.getElementById('loginBtn');
+                if (loginBtn) {
+                    loginBtn.innerHTML = u ? '<i data-feather="log-out"></i><span>Logout</span>' : '<i data-feather="log-in"></i><span>Login</span>';
+                    feather.replace();
+                }
+            });
+
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.onclick = async () => {
+                    if (auth.currentUser) await logoutUser();
+                    else await loginWithGoogle();
+                };
+            }
+        }
+        init();
+    </script>
+</body>
+</html>

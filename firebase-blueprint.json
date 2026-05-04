@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "Account": {
+      "title": "Account",
+      "description": "Chart of Account entry",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["ASET", "KEWAJIBAN", "EKUITAS", "PENDAPATAN", "BEBAN"] },
+        "initialBalance": { "type": "number" },
+        "currentBalance": { "type": "number" }
+      },
+      "required": ["code", "name", "type"]
+    },
+    "JournalEntry": {
+      "title": "Journal Entry",
+      "description": "Financial transaction record",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date-time" },
+        "referenceCode": { "type": "string" },
+        "description": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "referenceCode", "description", "totalAmount"]
+    },
+    "Transaction": {
+      "title": "Transaction Item",
+      "description": "Individual debit/credit line in a journal entry",
+      "type": "object",
+      "properties": {
+        "accountId": { "type": "string" },
+        "accountName": { "type": "string" },
+        "debit": { "type": "number" },
+        "credit": { "type": "number" }
+      },
+      "required": ["accountId", "debit", "credit"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Application user data",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "staff"] },
+        "displayName": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/accounts/{accountId}": {
+      "schema": "Account",
+      "description": "Master list of accounts"
+    },
+    "/journal_entries/{entryId}": {
+      "schema": "JournalEntry",
+      "description": "History of all financial entries"
+    },
+    "/journal_entries/{entryId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Sub-collection for normalized transaction items"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User specific settings and roles"
+    }
+  }
+}
